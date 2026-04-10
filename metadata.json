@@ -1,0 +1,5 @@
+{
+  "name": "Industrial Waste Reutilization System",
+  "description": "An AI-powered system for industrial waste classification, recyclability analysis, and resource recovery connectivity in Tamil Nadu.",
+  "requestFramePermissions": ["camera", "geolocation"]
+}

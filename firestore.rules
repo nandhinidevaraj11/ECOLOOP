@@ -1,0 +1,145 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {uid}
+// Fields:
+//   - uid: string (required) - Firebase Auth UID
+//   - name: string (required, 1-100 chars) - Industry/User name
+//   - email: string (required, valid email) - Contact email
+//   - type: string (required, Industry|Household) - User type
+//   - location: string (optional, 0-200 chars) - Primary location
+//   - createdAt: timestamp (required) - Creation time
+//
+// Collection: listings
+// Document ID: {listingId}
+// Fields:
+//   - id: string (required) - Listing ID
+//   - userId: string (required) - Owner UID
+//   - userName: string (required) - Owner name for display
+//   - userType: string (required) - Owner type for display
+//   - wasteType: string (required) - Material type
+//   - classification: string (required, recyclable|hazardous|recoverable)
+//   - quantity: string (required)
+//   - location: string (required)
+//   - image: string (required, base64/url)
+//   - marketValue: string (required)
+//   - isSold: bool (required)
+//   - timestamp: timestamp (required)
+//   - recyclingMethods: list (optional)
+//   - safetyProtocols: list (optional)
+//   - hazardousAlert: string (optional)
+//
+// Collection: analytics
+// Document ID: {analysisId}
+// Fields:
+//   - userId: string (required)
+//   - wasteType: string (required)
+//   - classification: string (required)
+//   - timestamp: timestamp (required)
+//   - image: string (required)
+//   - marketValue: string (optional)
+//   - quantity: string (optional)
+//   - hazardous: bool (required)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+    
+    function isValidString(val, min, max) {
+      return val is string && val.size() >= min && val.size() <= max;
+    }
+
+    function isRecent(ts) {
+      return ts is timestamp && ts > request.time - duration.value(5, 'm') && ts <= request.time;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'type', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             isValidString(data.name, 1, 100) &&
+             isValidEmail(data.email) &&
+             data.type in ['Industry', 'Household'] &&
+             data.createdAt is timestamp;
+    }
+    
+    function isValidListing(data) {
+      return data.keys().hasAll(['userId', 'userName', 'userType', 'wasteType', 'classification', 'quantity', 'location', 'image', 'marketValue', 'isSold', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             isValidString(data.userName, 1, 100) &&
+             data.userType in ['Industry', 'Household'] &&
+             isValidString(data.wasteType, 1, 100) &&
+             data.classification in ['recyclable', 'hazardous', 'recoverable'] &&
+             isValidString(data.quantity, 1, 50) &&
+             isValidString(data.location, 1, 200) &&
+             data.image is string && data.image.size() < 2000000 && // Limit image size if base64
+             data.isSold is bool &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidAnalysis(data) {
+      return data.keys().hasAll(['userId', 'wasteType', 'classification', 'timestamp', 'image', 'hazardous']) &&
+             data.userId == request.auth.uid &&
+             isValidString(data.wasteType, 1, 100) &&
+             data.image is string && data.image.size() < 2000000 &&
+             data.hazardous is bool &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && isRecent(request.resource.data.createdAt);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.createdAt == resource.data.createdAt &&
+                    request.resource.data.uid == resource.data.uid;
+    }
+    
+    match /listings/{listingId} {
+      allow read: if true; // Marketplace is public
+      allow create: if isAuthenticated() && isValidListing(request.resource.data) && isRecent(request.resource.data.timestamp);
+      allow update: if isAuthenticated() && (
+        // Owner can update their listing
+        (isOwner(resource.data.userId) && isValidListing(request.resource.data) && request.resource.data.userId == resource.data.userId) ||
+        // Anyone can mark as sold if buying (simplified for demo, usually needs more logic)
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isSold']) && request.resource.data.isSold == true)
+      );
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /analytics/{analysisId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && isValidAnalysis(request.resource.data) && isRecent(request.resource.data.timestamp);
+    }
+    
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

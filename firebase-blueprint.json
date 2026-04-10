@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents an industrial or household user in the system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Name of the industry or individual" },
+        "email": { "type": "string", "format": "email", "description": "Contact email" },
+        "type": { "type": "string", "enum": ["Industry", "Household"], "description": "Type of user" },
+        "location": { "type": "string", "description": "Primary location of the industry" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "name", "email", "type"]
+    },
+    "Listing": {
+      "title": "Listing",
+      "description": "A waste material listing in the marketplace.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique listing ID" },
+        "userId": { "type": "string", "description": "UID of the user who posted the listing" },
+        "userName": { "type": "string", "description": "Name of the industry/user for display" },
+        "userType": { "type": "string", "description": "Type of user for display" },
+        "wasteType": { "type": "string", "description": "Type of waste material" },
+        "classification": { "type": "string", "enum": ["recyclable", "hazardous", "recoverable"], "description": "Waste classification" },
+        "quantity": { "type": "string", "description": "Quantity of waste" },
+        "location": { "type": "string", "description": "Location of the waste" },
+        "image": { "type": "string", "description": "Base64 or URL of the waste image" },
+        "marketValue": { "type": "string", "description": "Estimated or asking market value" },
+        "isSold": { "type": "boolean", "description": "Whether the item has been sold" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the listing was posted" },
+        "recyclingMethods": { "type": "array", "items": { "type": "string" }, "description": "Suggested recycling methods" },
+        "safetyProtocols": { "type": "array", "items": { "type": "string" }, "description": "Required safety protocols" },
+        "hazardousAlert": { "type": "string", "description": "Alert message if hazardous" }
+      },
+      "required": ["userId", "wasteType", "classification", "quantity", "location", "image", "timestamp"]
+    },
+    "Analytics": {
+      "title": "Analytics",
+      "description": "Recorded waste analysis history for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user" },
+        "wasteType": { "type": "string", "description": "Type of waste material" },
+        "classification": { "type": "string", "description": "Waste classification" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the analysis was performed" },
+        "image": { "type": "string", "description": "Base64 image of the waste" },
+        "marketValue": { "type": "string", "description": "Estimated market value" },
+        "quantity": { "type": "string", "description": "Predicted quantity" },
+        "hazardous": { "type": "boolean", "description": "Whether hazardous material was detected" }
+      },
+      "required": ["userId", "wasteType", "classification", "timestamp", "image"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/listings/{listingId}": {
+      "schema": "Listing",
+      "description": "Marketplace listings"
+    },
+    "/analytics/{analysisId}": {
+      "schema": "Analytics",
+      "description": "Waste analysis history"
+    }
+  }
+}
