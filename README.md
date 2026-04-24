@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/8ba1284f-a6ed-48ab-af81-63d3172c86f4
+View my website : https://ecoloop-neon.vercel.app/
 
 ## Run Locally
 
